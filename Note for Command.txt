@@ -1,0 +1,3 @@
+Scaffold-DbContext -Connection "Server=DESKTOP-H4U1I43;Database=CoreCodeFirst_01;User=sa;Password=open" -Provider Microsoft.EntityFrameworkCore.SqlServer -OutputDir Models -Context ApplicationDbContext
+
+PM> Scaffold-DbContext -Connection "Server=(LocalDB)\MSSQLLocalDB;Database=Ex_08;" -Provider Microsoft.EntityFrameworkCore.SqlServer -OutputDir Models -Context ApplicationDbContext

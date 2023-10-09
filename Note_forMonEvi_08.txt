@@ -1,0 +1,272 @@
+
+1.Create a database in sql server with single table (Data type: string, int,decimal,datetime,bit) 
+and also make DML with Store Procedure for CRUD.
+----==============================================================--
+
+use master
+Create database CoreMonthlyEvi
+Go
+
+use CoreMonthlyEvi
+Create Table CustomerInfo
+(
+Id int Primary key Identity(1,1),
+CustoName varchar(30),
+CustoAddress varchar(50),
+PhoneNo int,
+Age int,
+Salary decimal,
+DateOfB date
+);
+Go
+
+--Create StorProcedure---
+
+Create proc sp_CreateCustomer
+@custoName varchar(30),
+@custoAddress varchar(50),
+@phoneNo int,
+@age int,
+@salary decimal,
+@dateOfB date
+AS
+Begin
+	Insert Into CustomerInfo (CustoName,CustoAddress,PhoneNo,Age,Salary,DateOfB)
+	Values (@custoName,@custoAddress,@phoneNo,@age,@salary,@dateOfB)
+End
+Go
+
+
+Create proc sp_UpdateCustomer
+@id int,
+@custoName varchar(30),
+@custoAddress varchar(50),
+@phoneNo int,
+@age int,
+@salary decimal,
+@dateOfB date
+AS
+Begin
+	Update  CustomerInfo
+	Set CustoName=@custoName,CustoAddress=@custoAddress,PhoneNo=@phoneNo,Age=@age,Salary=@salary,DateOfB=@dateOfB
+	Where Id=@id
+End
+Go
+
+
+Create proc sp_DeleteCustomer
+@id int
+As
+Begin
+	Delete from CustomerInfo
+	where Id = @id
+End
+Go
+
+Create proc sp_GetAllCustomer
+As
+Begin
+	Select* from CustomerInfo
+End
+Go
+
+Create proc sp_GetByIdCustomer
+@id int
+As
+Begin
+	Select* from CustomerInfo
+	where Id = @id
+End
+Go
+--==========================================================================
+
+
+
+2. Take a core project.
+Take a core project.=> >>>>>>Create New a Project
+>>>>>> ASP.NET Core Web App(Model-View-Controller) C#
+>>>Next >> Project Name Soluation Name.
+>>>>>> Select Framework> .NET Core 3.1 (out of support)
+>>> No Authentication
+>>>> tick off Configure for HTTPS
+>>> Create
+--====================================================================--
+
+
+3. Open Package manager Console 
+	Install <<Microsoft.EntityFrameworkCor.Tool
+	Instll <<Microsoft.EntityFrameworkCor.Sqlserver
+--====================================================================--
+
+
+
+4. Open Package manager Console (PMC) and write this command to migrate your DB first to Code First:
+
+MP> Scaffold-DbContext -Connection "Server=localhost;Database=CoreCodeFirst_01;User=sa;Password=open" -Provider Microsoft.EntityFrameworkCore.SqlServer -OutputDir Models -Context ApplicationDbContext
+--========================================================================--
+
+
+
+5. In Startup.cs add the service.AddDbContext< ApplicationDbContext >();
+--===============================================================================
+
+
+6. Create a Controller. Name<CustomerController>
+
+using FinalEvi_08.Models;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Linq;
+
+namespace FinalEvi_08.Controllers
+{
+    public class CustomerController : Controller
+    {
+        private readonly ApplicationDbContext _context;
+        public CustomerController(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+        public IActionResult Index()
+        {
+            var emp =
+           _context.CustomerInfo.FromSqlRaw($"sp_GetAllCustomer").AsEnumerable().ToList();
+            return View(emp);
+        }
+        public IActionResult Create()
+        {
+            return View();
+        }
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult Create(CustomerInfo custo)
+        {
+            if (ModelState.IsValid)
+            {
+                string forCreate = $"sp_CreateCustomer { custo.CustoName},{ custo.CustoAddress},{ custo.PhoneNo},{ custo.Age},{ custo.Salary},'{custo.DateOfB}'";
+              _context.Database.ExecuteSqlRaw(forCreate);
+                return RedirectToAction("Index");
+            }
+            return View(custo);
+        }
+        public IActionResult Edit(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+            var custo = _context.CustomerInfo.FromSqlRaw($"sp_GetByIdCustomer { id}").AsEnumerable().FirstOrDefault();
+            if (custo == null)
+            {
+                return NotFound();
+            }
+            return View(custo);
+        }
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult Edit(CustomerInfo custo)
+        {
+            if (ModelState.IsValid)
+            {
+                string forUpdate =$"sp_UpdateCustomer'{custo.Id}','{custo.CustoName}', '{custo.CustoAddress}' ,'{custo.PhoneNo}', '{custo.Age}','{custo.Salary }','{custo.DateOfB}'";
+                _context.Database.ExecuteSqlRaw(forUpdate);
+              return RedirectToAction("Index");
+            }
+             return View(custo);
+        }
+            public IActionResult Details(int? id)
+            {
+                if (id == null)
+                {
+                    return NotFound();
+                }
+                var custo = _context.CustomerInfo.FirstOrDefault(x => x.Id == id);
+                return View(custo);
+            }
+            public IActionResult Delete(int? id)
+            {
+                if (id == null)
+                {
+                    return NotFound();
+                }
+                var custo = _context.CustomerInfo.FromSqlRaw($"sp_GetByIdCustomer {id} ").AsEnumerable().FirstOrDefault();
+               return View(custo);
+            }
+            [HttpPost]
+            [ValidateAntiForgeryToken]
+            public IActionResult Delete(CustomerInfo custo)
+            {
+                if (ModelState.IsValid)
+                {
+                    _context.Database.ExecuteSqlRaw($"sp_DeleteCustomer {custo.Id}");
+                    _context.SaveChanges();
+                    return RedirectToAction("Index");
+                }
+                return View();
+            }
+            public IActionResult CustomerStats()
+            {
+                //count
+                int cusCount = _context.CustomerInfo.Count();
+                ViewBag.Count = cusCount;
+                //average
+                double avgAge = (double)_context.CustomerInfo.Average(a => a.Age);
+                ViewBag.AvgAge = avgAge;
+                //min
+                int minAge = (int)_context.CustomerInfo.Min(a => a.Age);
+                ViewBag.MinAge = minAge;
+                //max
+                int maxAge = (int)_context.CustomerInfo.Max(a => a.Age);
+                ViewBag.MaxAge = maxAge;
+                //sum
+                decimal totalSalary = (decimal)_context.CustomerInfo.Sum(a => a.Salary);
+                ViewBag.SumSalary = totalSalary;
+                return View();
+            }
+    }
+}
+
+--============================================================================================
+
+
+
+7. Create Generate all the view pages by scaffolding except EmployeeStats action.
+--==================================================================================
+
+
+
+8. Create View Page for CustomerStatsaction -
+
+
+@{
+    ViewData["Title"] = "CountEmployee";
+}
+<h4>Total Employees</h4>
+<hr />
+<h4>@ViewBag.Count</h4>
+<hr />
+<h4>Average Age</h4>
+<hr />
+<h4>@ViewBag.AvgAge</h4>
+<hr />
+<h4>Most Junior</h4>
+<hr />
+<h4>@ViewBag.MinAge</h4>
+<hr />
+<h4>Most Senior</h4>
+<hr />
+<h4>@ViewBag.MaxAge</h4>
+
+--=======================================================================================--
+
+
+
+9. Modify the Index.cshtml Add this button bellow of the page. 
+
+<a asp-action="CustomerStats" class="btn btn-info">Cusomer Info</a>
+
+-=====================================================================================--
+
+
+
+
